@@ -151,11 +151,32 @@ opaque-origin iframe (phase 4).
   non-notebook files redirect to their raw URL, so relative images keep
   working.
 - Navbar: View on GitHub, Execute on Binder, breadcrumbs.
-- `/v2/github/{user}/{repo}/tree/{ref}/{path}`: Contents API listing; branch
-  and tag lists fetched only when the ref menu is opened.
+- Directory listings, `/v2/github/{user}/{repo}/tree/{ref}/{path}/`, with
+  the same behavior as v1's `GitHubTreeHandler` and `treelist.html`:
+  - One Contents API call (`GET /repos/{user}/{repo}/contents/{path}?ref={ref}`).
+    v1 makes three per page, because it also lists branches and tags.
+  - If the path is a file, redirect to the blob view. Paths without a
+    trailing slash get one, as in v1.
+  - Entries in v1's order: directories (link to their tree view), then
+    notebooks (link to their v2 blob view), then other files (link to the
+    file on GitHub). Submodules have no link.
+  - Breadcrumbs from the repo root, plus a `..` row that leads to the parent
+    directory, or to the user's repository list at the repo root. As in v1,
+    user and repo are taken from the entries' `html_url`, so renamed repos
+    give correct links.
+  - Ref menu with branches and tags. It is fetched only when opened, so a
+    listing costs one API call.
+  - Navbar: View on GitHub (tree URL), Execute on Binder (repo at ref).
+  - Rendered as plain links in v1's table markup and styles, not with
+    JupyterLab's file browser. The file browser needs a contents drive and
+    document manager, and navigates like an app rather than through
+    linkable pages. Listing pages don't load the JupyterLab render chunk.
+  - The Contents API lists at most 1,000 entries per directory (v1 has the
+    same limit). Larger directories could fall back to the Git Trees API.
 - `/v2/github/{user}/` (repo list), `/v2/github/{user}/{repo}/` (default
   branch lookup, then redirect).
-- `/v2/gist/{user}/{id}[/{file}]` and `/v2/gist/{user}/`.
+- `/v2/gist/{user}/{id}[/{file}]` and `/v2/gist/{user}/`. Gists with
+  several files get the same kind of listing, as in v1.
 - Rate-limit errors are shown with the reset time from `X-RateLimit-Reset`.
 - Same URL rewrites as v1 (`raw.githubusercontent.com` and `github.com`
   links under `/v2/url[s]/` redirect to `/v2/github/`).
