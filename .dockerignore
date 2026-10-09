@@ -13,4 +13,6 @@ nbviewer.egg-info/
 nbviewer/static/build/
 nbviewer/static/components/
 node_modules/
+client/node_modules/
+nbviewer/static/v2/
 notebook-*/

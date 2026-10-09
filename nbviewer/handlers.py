@@ -15,6 +15,7 @@ from .providers.base import BaseHandler
 from .providers.base import format_prefix
 from .utils import transform_ipynb_uri
 from .utils import url_path_join
+from .v2 import v2_handlers
 
 # -----------------------------------------------------------------------------
 # Handler classes
@@ -107,7 +108,9 @@ def format_handlers(formats, urlspecs, **handler_settings):
     return urlspecs
 
 
-def init_handlers(formats, providers, base_url, localfiles, **handler_kwargs):
+def init_handlers(
+    formats, providers, base_url, localfiles, enable_v2=False, **handler_kwargs
+):
     """
     `handler_kwargs` is a dict of dicts: first dict is `handler_names`, which
     specifies the handler_classes to load for the providers, the second
@@ -115,6 +118,8 @@ def init_handlers(formats, providers, base_url, localfiles, **handler_kwargs):
     Only `handler_settings` should get added to the initialize_kwargs in the
     handler URLSpecs, which is why we pass only it to `format_handlers`
     but both it and `handler_names` to `provider_handlers`
+
+    `enable_v2` adds the client-side viewer under /v2/
     """
     handler_settings = handler_kwargs["handler_settings"]
     handler_names = handler_kwargs["handler_names"]
@@ -140,6 +145,8 @@ def init_handlers(formats, providers, base_url, localfiles, **handler_kwargs):
         pre_providers.append(
             ("/oauth_callback/?", HubOAuthCallbackHandler, {}),
         )
+    if enable_v2:
+        pre_providers.extend(v2_handlers())
 
     post_providers = [(r"/(robots\.txt|favicon\.ico)", web.StaticFileHandler, {})]
 

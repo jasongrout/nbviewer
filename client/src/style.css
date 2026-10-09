@@ -1,0 +1,34 @@
+/* Let the notebook flow in the page instead of scrolling in its own panel. */
+#nbviewer-v2 .jp-Notebook,
+#nbviewer-v2 .jp-WindowedPanel-outer {
+  height: auto;
+  overflow: visible;
+}
+
+#nbviewer-v2 .jp-Notebook {
+  padding: 0;
+}
+
+.nbv2-status {
+  padding: 2em 0;
+  color: var(--jp-ui-font-color2, #777);
+}
+
+.nbv2-error {
+  margin-top: 2em;
+}
+
+.nbv2-error p {
+  margin: 0.5em 0 0;
+  overflow-wrap: anywhere;
+}
+
+.nbv2-home {
+  max-width: 40em;
+  margin: 3em auto;
+}
+
+.nbv2-home-message {
+  margin-top: 0.5em;
+  color: #a94442;
+}

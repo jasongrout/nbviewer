@@ -60,13 +60,19 @@ render with JupyterLab components into #notebook
 | Cells, prompts, outputs | `@jupyterlab/cells`, `@jupyterlab/outputarea` (via the above) |
 | MIME rendering (HTML, images, SVG, LaTeX, JS, markdown) | `@jupyterlab/rendermime` |
 | Markdown parser | `@jupyterlab/markedparser-extension` (`marked`, same as Lab) |
-| Math | `@jupyterlab/mathjax-extension` (MathJax 3) |
+| Math | `@jupyterlab/mathjax-extension` (MathJax 3, with its font CSS) |
 | Code display / highlighting | `@jupyterlab/codemirror` (read-only CodeMirror 6) |
 | Theme | `@jupyterlab/theme-light-extension` CSS variables |
 
-Built with webpack (the JupyterLab ecosystem's bundler) from `client/` into
+Built with rspack (JupyterLab's bundler from 4.6 on) from `client/` into
 `nbviewer/static/v2/`, which is already shipped as package data. The build is
-added to the existing `setup.py` preflight next to the LESS build.
+added to the existing `setup.py` preflight next to the LESS build
+(`invoke build-client`).
+
+Dependency policy: `@jupyterlab/*` at the latest stable release (4.5.x); the
+toolchain (rspack 1.7, TypeScript 5.9, css-loader 6, style-loader 3) at the
+versions JupyterLab's own builder and packages use. `client/package-lock.json`
+is committed so builds are reproducible (`npm ci`).
 
 ### Server side
 
@@ -86,7 +92,10 @@ v1 already runs notebook-supplied HTML and JavaScript on the nbviewer origin
 (nbconvert inlines `text/html` and `application/javascript` outputs). For
 parity, v2 renders outputs as trusted and keeps jQuery and RequireJS on the
 page (`layout.html` already loads them) because many classic-notebook outputs
-(older Plotly and Bokeh output, for example) expect them as globals.
+(older Plotly and Bokeh output, for example) expect them as globals. For the
+same reason, JavaScript outputs run with `element` bound to the jQuery-wrapped
+output node, as in the classic Notebook and nbconvert's templates (JupyterLab
+passes a bare DOM node). Markdown cells are sanitized, as in JupyterLab.
 
 What differs from v1: `connect-src` must allow the hosts the browser fetches
 from. The page holds no secrets (no tokens, no auth cookies outside
@@ -113,7 +122,7 @@ opaque-origin iframe (phase 4).
 
 ## Phases
 
-### Phase 1 (minimal): `/v2/url/` and `/v2/urls/`
+### Phase 1 (minimal): `/v2/url/` and `/v2/urls/` (done)
 
 - Tornado `V2Handler` + `v2.html` shell + CSP trait + tests.
 - Client: URL parsing for `url`/`urls` (including v1's encoding of query
@@ -121,7 +130,12 @@ opaque-origin iframe (phase 4).
   with clear errors (CORS/network, HTTP status, invalid JSON, nbformat < 4),
   each linking to the v1 rendering.
 - Render with `StaticNotebook`; trusted outputs; MathJax; syntax highlighting
-  from `metadata.language_info` / kernelspec.
+  from `metadata.language_info` / kernelspec. All cells are laid out
+  (`windowingMode: 'none'`), as in v1's static HTML, so positions are final.
+- Normalize the notebook JSON as jupyter_server would before JupyterLab sees
+  it (port of nbformat's `rejoin_lines`: multi-line strings stored as lists).
+- `#heading` fragment links scroll to the heading once it has rendered
+  (JupyterLab keeps header anchors in `data-jupyter-id`, not `id`).
 - Navbar: Download notebook and View in classic nbviewer; page title from the
   file name.
 - Relative links and images in markdown/HTML resolve against the notebook's

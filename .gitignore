@@ -14,11 +14,15 @@ dist
 node_modules
 screenshots
 nbviewer/git_info.json
+# client-side viewer build output
+nbviewer/static/v2/
+client/lib/
 # ignore downloaded notebook sources
 notebook-*
 .eggs/
 MANIFEST
 package-lock.json
+!client/package-lock.json
 .vscode/
 *.tgz
 .idea

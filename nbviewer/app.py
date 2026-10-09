@@ -249,6 +249,11 @@ class NBViewer(Application):
         default_value="html", help="Format to use for legacy / URLs."
     ).tag(config=True)
 
+    enable_v2 = Bool(
+        default_value=True,
+        help="Serve the client-side viewer under /v2/, where the browser fetches and renders notebooks.",
+    ).tag(config=True)
+
     extra_head_html = Unicode(help="""
         Extra HTML to go in the <head> tag
 
@@ -418,6 +423,12 @@ class NBViewer(Application):
     threads = Int(default_value=1, help="Number of threads to use for rendering.").tag(
         config=True
     )
+
+    v2_content_security_policy = Unicode(
+        # the browser fetches notebooks from their hosts, so connect-src can't be 'none'
+        default_value="connect-src 'self' https: http:;",
+        help="Content-Security-Policy header setting for the client-side viewer under /v2/.",
+    ).tag(config=True)
 
     # prefer the JupyterHub defined service prefix over the CLI
     @cached_property
@@ -648,6 +659,7 @@ class NBViewer(Application):
             self.providers,
             self._base_url,
             self.localfiles,
+            enable_v2=self.enable_v2,
             **handler_kwargs,
         )
 
@@ -712,6 +724,7 @@ class NBViewer(Application):
             statsd_host=self.statsd_host,
             statsd_port=self.statsd_port,
             statsd_prefix=self.statsd_prefix,
+            v2_content_security_policy=self.v2_content_security_policy,
             cookie_secret=os.urandom(32),  # generate a random cookie secret
         )
 
