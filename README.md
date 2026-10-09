@@ -163,9 +163,11 @@ components, so the server makes no upstream requests. For example,
     /v2/url/jakevdp.github.io/downloads/notebooks/XKCD_plots.ipynb
 
 renders the same notebook as `/url/jakevdp.github.io/downloads/notebooks/XKCD_plots.ipynb`.
-Only `/v2/url/` and `/v2/urls/` are supported so far, and only for hosts that
-allow cross-origin requests (CORS). See [`client/PLAN.md`](client/PLAN.md) for
-the design and the roadmap.
+`/v2/url/`, `/v2/urls/` (for hosts that allow cross-origin requests),
+`/v2/github/` (notebooks, directory listings, users and repositories) and
+`/v2/gist/` work so far. GitHub notebooks are read from raw.githubusercontent.com
+without API requests; listings use the visitor's GitHub API quota. See
+[`client/PLAN.md`](client/PLAN.md) for the design and the roadmap.
 
 The source is in `client/`. Configuration:
 

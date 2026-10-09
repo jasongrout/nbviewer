@@ -21,7 +21,12 @@ class V2TestCase(NBViewerTestCase):
         )
         assert config is not None
         self.assertEqual(
-            json.loads(config.group(1)), {"viewerBase": "/v2/", "classicBase": "/"}
+            json.loads(config.group(1)),
+            {
+                "viewerBase": "/v2/",
+                "classicBase": "/",
+                "binderBaseUrl": "https://mybinder.org/v2",
+            },
         )
 
     def test_csp(self):

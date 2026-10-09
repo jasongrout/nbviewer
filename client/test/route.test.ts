@@ -2,19 +2,26 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+  encodePath,
   fetchUrl,
+  gistPath,
+  githubPath,
   parseRoute,
-  viewerPath,
-  viewerPathForInput
+  viewerPath
 } from '../src/route.ts';
 
 test('empty path is the landing page', () => {
   assert.deepEqual(parseRoute(''), { kind: 'home' });
 });
 
-test('unknown providers are not found', () => {
-  assert.deepEqual(parseRoute('github/user/repo'), { kind: 'notfound' });
+test('unknown paths are not found', () => {
+  assert.deepEqual(parseRoute('nonsense/here'), { kind: 'notfound' });
   assert.deepEqual(parseRoute('url/hostonly'), { kind: 'notfound' });
+  assert.deepEqual(parseRoute('github/u/r/commits/main'), { kind: 'notfound' });
+});
+
+test('malformed percent-encoding is not found', () => {
+  assert.deepEqual(parseRoute('github/%E0%A4%A/'), { kind: 'notfound' });
 });
 
 test('url and urls map to http and https', () => {
@@ -22,8 +29,7 @@ test('url and urls map to http and https', () => {
     parseRoute('url/jakevdp.github.io/downloads/notebooks/XKCD_plots.ipynb'),
     {
       kind: 'url',
-      remoteUrl:
-        'http://jakevdp.github.io/downloads/notebooks/XKCD_plots.ipynb',
+      remoteUrl: 'http://jakevdp.github.io/downloads/notebooks/XKCD_plots.ipynb',
       filename: 'XKCD_plots.ipynb'
     }
   );
@@ -34,14 +40,11 @@ test('url and urls map to http and https', () => {
   });
 });
 
-test('percent-encoding in the path is kept', () => {
+test('percent-encoding in url paths is kept', () => {
   const route = parseRoute('urls/example.org/My%20Notebooks/A%20B.ipynb');
   assert.equal(route.kind, 'url');
   if (route.kind === 'url') {
-    assert.equal(
-      route.remoteUrl,
-      'https://example.org/My%20Notebooks/A%20B.ipynb'
-    );
+    assert.equal(route.remoteUrl, 'https://example.org/My%20Notebooks/A%20B.ipynb');
     assert.equal(route.filename, 'A B.ipynb');
   }
 });
@@ -51,14 +54,159 @@ test('an encoded trailing ?query segment becomes the query string', () => {
   const route = parseRoute('urls/example.org/get/%3Fname%3Dnb.ipynb%26raw%3D1');
   assert.equal(route.kind, 'url');
   if (route.kind === 'url') {
-    assert.equal(
-      route.remoteUrl,
-      'https://example.org/get?name=nb.ipynb&raw=1'
-    );
+    assert.equal(route.remoteUrl, 'https://example.org/get?name=nb.ipynb&raw=1');
   }
 });
 
-test('viewerPath round-trips through parseRoute', () => {
+test('old GitHub URL forms under url/ redirect to github/', () => {
+  assert.deepEqual(parseRoute('urls/github.com/ipython/ipython/blob/6.x/a.ipynb'), {
+    kind: 'redirect',
+    path: 'github/ipython/ipython/blob/6.x/a.ipynb'
+  });
+  for (const host of ['raw.github.com', 'rawgithub.com', 'raw.githubusercontent.com']) {
+    assert.deepEqual(parseRoute(`url/${host}/ipython/ipython/6.x/a%20b.ipynb`), {
+      kind: 'redirect',
+      path: 'github/ipython/ipython/blob/6.x/a%20b.ipynb'
+    });
+  }
+});
+
+test('github user and repo pages, with slashes added', () => {
+  assert.deepEqual(parseRoute('github/ipython'), { kind: 'redirect', path: 'github/ipython/' });
+  assert.deepEqual(parseRoute('github/ipython/'), { kind: 'github-user', user: 'ipython' });
+  assert.deepEqual(parseRoute('github/ipython/ipython'), {
+    kind: 'redirect',
+    path: 'github/ipython/ipython/'
+  });
+  assert.deepEqual(parseRoute('github/ipython/ipython/'), {
+    kind: 'github-repo',
+    user: 'ipython',
+    repo: 'ipython'
+  });
+});
+
+test('github trees', () => {
+  assert.deepEqual(parseRoute('github/ipython/ipython/tree/6.x'), {
+    kind: 'redirect',
+    path: 'github/ipython/ipython/tree/6.x/'
+  });
+  assert.deepEqual(parseRoute('github/ipython/ipython/tree/6.x/'), {
+    kind: 'github-tree',
+    user: 'ipython',
+    repo: 'ipython',
+    ref: '6.x',
+    path: ''
+  });
+  assert.deepEqual(parseRoute('github/ipython/ipython/tree/6.x/examples/IPython%20Kernel'), {
+    kind: 'redirect',
+    path: 'github/ipython/ipython/tree/6.x/examples/IPython%20Kernel/'
+  });
+  assert.deepEqual(parseRoute('github/ipython/ipython/tree/6.x/examples/IPython%20Kernel/'), {
+    kind: 'github-tree',
+    user: 'ipython',
+    repo: 'ipython',
+    ref: '6.x',
+    path: 'examples/IPython Kernel'
+  });
+  // a ref containing a slash, escaped as one segment
+  assert.deepEqual(parseRoute('github/u/r/tree/feature%2Fx/docs/'), {
+    kind: 'github-tree',
+    user: 'u',
+    repo: 'r',
+    ref: 'feature/x',
+    path: 'docs'
+  });
+});
+
+test('github blobs', () => {
+  const blob = {
+    kind: 'github-blob',
+    user: 'ipython',
+    repo: 'ipython',
+    ref: '6.x',
+    path: 'examples/IPython Kernel/Index.ipynb'
+  };
+  assert.deepEqual(
+    parseRoute('github/ipython/ipython/blob/6.x/examples/IPython%20Kernel/Index.ipynb'),
+    blob
+  );
+  assert.deepEqual(
+    parseRoute('github/ipython/ipython/raw/6.x/examples/IPython%20Kernel/Index.ipynb'),
+    blob
+  );
+  assert.deepEqual(parseRoute('github/ipython/ipython/blob/6.x/examples/'), {
+    kind: 'redirect',
+    path: 'github/ipython/ipython/blob/6.x/examples'
+  });
+});
+
+test('gists', () => {
+  const id = '0123456789abcdef0123';
+  assert.deepEqual(parseRoute(`gist/fperez/${id}`), {
+    kind: 'gist',
+    user: 'fperez',
+    id,
+    filename: ''
+  });
+  assert.deepEqual(parseRoute(`gist/${id}`), { kind: 'gist', user: null, id, filename: '' });
+  assert.deepEqual(parseRoute(`gist/fperez/${id}/My%20Notebook.ipynb`), {
+    kind: 'gist',
+    user: 'fperez',
+    id,
+    filename: 'My Notebook.ipynb'
+  });
+  assert.deepEqual(parseRoute(`gist/fperez/${id}/files/a.ipynb`), {
+    kind: 'gist',
+    user: 'fperez',
+    id,
+    filename: 'a.ipynb'
+  });
+  assert.deepEqual(parseRoute('gist/12345'), {
+    kind: 'gist',
+    user: null,
+    id: '12345',
+    filename: ''
+  });
+  assert.deepEqual(parseRoute('gist/fperez/'), { kind: 'gist-user', user: 'fperez' });
+  assert.deepEqual(parseRoute('gist/fperez'), { kind: 'gist-user', user: 'fperez' });
+});
+
+test('bare gist ids redirect to gist/', () => {
+  const id = '0123456789abcdef0123';
+  assert.deepEqual(parseRoute(id), { kind: 'redirect', path: `gist/${id}` });
+  assert.deepEqual(parseRoute(`${id}/a.ipynb`), {
+    kind: 'redirect',
+    path: `gist/${id}/a.ipynb`
+  });
+  assert.deepEqual(parseRoute('12345'), { kind: 'redirect', path: 'gist/12345' });
+});
+
+test('viewer paths round-trip through parseRoute', () => {
+  const tree = githubPath('tree', 'u', 'r', 'feature/x', 'a dir/sub');
+  assert.equal(tree, 'github/u/r/tree/feature%2Fx/a%20dir/sub/');
+  assert.deepEqual(parseRoute(tree), {
+    kind: 'github-tree',
+    user: 'u',
+    repo: 'r',
+    ref: 'feature/x',
+    path: 'a dir/sub'
+  });
+  assert.equal(githubPath('tree', 'u', 'r', 'main', ''), 'github/u/r/tree/main/');
+  const blob = githubPath('blob', 'u', 'r', 'main', 'a dir/n#1.ipynb');
+  assert.deepEqual(parseRoute(blob), {
+    kind: 'github-blob',
+    user: 'u',
+    repo: 'r',
+    ref: 'main',
+    path: 'a dir/n#1.ipynb'
+  });
+  const gist = gistPath('fperez', '0123456789abcdef0123', 'a b.ipynb');
+  assert.deepEqual(parseRoute(gist), {
+    kind: 'gist',
+    user: 'fperez',
+    id: '0123456789abcdef0123',
+    filename: 'a b.ipynb'
+  });
   for (const url of [
     'https://example.org/a/b.ipynb',
     'http://example.org:8080/My%20Notebook.ipynb',
@@ -76,33 +224,13 @@ test('viewerPath round-trips through parseRoute', () => {
   assert.equal(viewerPath('not a url'), null);
 });
 
-test('landing page input', () => {
-  assert.equal(
-    viewerPathForInput(' https://example.org/nb.ipynb '),
-    'urls/example.org/nb.ipynb'
-  );
-  assert.equal(
-    viewerPathForInput('example.org/nb.ipynb'),
-    'urls/example.org/nb.ipynb'
-  );
-  assert.equal(
-    viewerPathForInput('http://example.org/nb.ipynb'),
-    'url/example.org/nb.ipynb'
-  );
-  assert.equal(viewerPathForInput(''), null);
+test('encodePath encodes each segment', () => {
+  assert.equal(encodePath('a b/c#d/e?f'), 'a%20b/c%23d/e%3Ff');
+  assert.equal(encodePath(''), '');
 });
 
 test('http is upgraded only on https pages', () => {
-  assert.equal(
-    fetchUrl('http://example.org/nb.ipynb', 'https:'),
-    'https://example.org/nb.ipynb'
-  );
-  assert.equal(
-    fetchUrl('http://example.org/nb.ipynb', 'http:'),
-    'http://example.org/nb.ipynb'
-  );
-  assert.equal(
-    fetchUrl('https://example.org/nb.ipynb', 'http:'),
-    'https://example.org/nb.ipynb'
-  );
+  assert.equal(fetchUrl('http://example.org/nb.ipynb', 'https:'), 'https://example.org/nb.ipynb');
+  assert.equal(fetchUrl('http://example.org/nb.ipynb', 'http:'), 'http://example.org/nb.ipynb');
+  assert.equal(fetchUrl('https://example.org/nb.ipynb', 'http:'), 'https://example.org/nb.ipynb');
 });

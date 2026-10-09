@@ -143,7 +143,7 @@ opaque-origin iframe (phase 4).
 - `/v2/` landing page: a form that maps a pasted URL to its `/v2/` path.
 - Build integration (`client/`, webpack, `setup.py`, Docker).
 
-### Phase 2: GitHub and Gist
+### Phase 2: GitHub and Gist (done)
 
 - `/v2/github/{user}/{repo}/blob/{ref}/{path}`: fetch from
   `raw.githubusercontent.com` (no API calls). On 404, one Contents API call

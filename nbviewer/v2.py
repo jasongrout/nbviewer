@@ -50,7 +50,11 @@ class V2Handler(BaseHandler):
             "v2.html",
             bundle_url=self.bundle_url(),
             classic_url=classic_base + raw_path,
-            v2_config={"viewerBase": viewer_base, "classicBase": classic_base},
+            v2_config={
+                "viewerBase": viewer_base,
+                "classicBase": classic_base,
+                "binderBaseUrl": self.binder_base_url or None,
+            },
         )
         # rendering a shell costs nothing upstream, so cache it for the maximum
         self.set_header("Cache-Control", "max-age=%i" % self.cache_expiry_max)

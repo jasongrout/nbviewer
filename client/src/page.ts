@@ -72,8 +72,8 @@ export function showHome(
     type: 'text',
     class: 'form-control',
     name: 'url',
-    placeholder: 'URL of a notebook, e.g. https://example.org/notebook.ipynb',
-    'aria-label': 'Notebook URL'
+    placeholder: 'URL | GitHub username | GitHub username/repo | Gist ID',
+    'aria-label': 'Notebook URL, GitHub user or repository, or Gist ID'
   }) as HTMLInputElement;
   const message = h('p', { class: 'nbv2-home-message' });
   const form = h(
@@ -95,7 +95,7 @@ export function showHome(
     event.preventDefault();
     const path = toPath(input.value);
     if (path === null) {
-      message.textContent = 'Enter an http:// or https:// URL.';
+      message.textContent = 'Enter a URL, a GitHub user or repository, or a Gist ID.';
       return;
     }
     window.location.assign(path);
@@ -108,7 +108,8 @@ export function showHome(
       h(
         'p',
         {},
-        'An experimental nbviewer that fetches and renders notebooks in your browser.'
+        'An experimental nbviewer that fetches and renders notebooks in your ' +
+          'browser, from URLs, GitHub repositories and gists.'
       ),
       form
     )

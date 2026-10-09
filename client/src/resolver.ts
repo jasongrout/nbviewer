@@ -1,17 +1,21 @@
 import type { IRenderMime } from '@jupyterlab/rendermime-interfaces';
 
-import { viewerPath } from './route';
-
 /**
  * Resolve relative links and images in rendered markdown and HTML against
- * the notebook's remote URL, so they point at the source host instead of
- * at nbviewer. Links to other notebooks stay inside the viewer.
+ * the notebook's source URL, instead of against the viewer page.
+ *
+ * Images and other embedded resources load from the source. Links go
+ * wherever the provider's `linkFor` sends them, e.g. other notebooks stay
+ * in the viewer.
  */
-export class RemoteResolver implements IRenderMime.IResolver {
-  constructor(
-    private readonly notebookUrl: string,
-    private readonly viewerBase: string
-  ) {}
+export class SourceResolver implements IRenderMime.IResolver {
+  private readonly sourceUrl: string;
+  private readonly linkFor: (absoluteUrl: string) => string;
+
+  constructor(sourceUrl: string, linkFor: (absoluteUrl: string) => string) {
+    this.sourceUrl = sourceUrl;
+    this.linkFor = linkFor;
+  }
 
   isLocal(url: string): boolean {
     if (url.startsWith('//')) {
@@ -26,17 +30,15 @@ export class RemoteResolver implements IRenderMime.IResolver {
     }
   }
 
-  async resolveUrl(url: string): Promise<string> {
-    return new URL(url, this.notebookUrl).href;
+  async resolveUrl(
+    url: string,
+    context?: IRenderMime.IResolveUrlContext
+  ): Promise<string> {
+    const absolute = new URL(url, this.sourceUrl).href;
+    return context?.tag === 'a' ? this.linkFor(absolute) : absolute;
   }
 
   async getDownloadUrl(url: string): Promise<string> {
-    if (/\.ipynb$/i.test(new URL(url).pathname)) {
-      const path = viewerPath(url);
-      if (path !== null) {
-        return this.viewerBase + path;
-      }
-    }
     return url;
   }
 }

@@ -17,7 +17,7 @@ import {
 import type { IRenderMime } from '@jupyterlab/rendermime-interfaces';
 import { Widget } from '@lumino/widgets';
 
-import { javaScriptRendererFactory } from './javascript';
+import { javaScriptRendererFactory } from './javascript.ts';
 
 import '@jupyterlab/theme-light-extension/style/variables.css';
 import '@jupyterlab/notebook/style/index.js';
