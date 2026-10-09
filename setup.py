@@ -27,6 +27,7 @@ def preflight():
     sh(["npm", "install"])
     sh(["invoke", "bower"])
     sh(["invoke", "less"])
+    sh(["invoke", "build-client"])
 
 
 def invoke_first(cmd):

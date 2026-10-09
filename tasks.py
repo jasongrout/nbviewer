@@ -17,6 +17,7 @@ NOTEBOOK_VERSION = "5.7.8"  # the notebook version whose LESS we will use
 NOTEBOOK_CHECKSUM = "573e0ae650c5d76b18b6e564ba6d21bf321d00847de1d215b418acb64f056eb8"  # sha256 checksum of notebook tarball
 
 APP_ROOT = os.path.dirname(__file__)
+CLIENT_ROOT = os.path.join(APP_ROOT, "client")
 NPM_BIN = os.path.join(APP_ROOT, "node_modules", ".bin")
 NOTEBOOK_STATIC_PATH = os.path.join(
     APP_ROOT, "notebook-%s" % NOTEBOOK_VERSION, "notebook", "static"
@@ -86,6 +87,14 @@ def less(ctx, debug=False):
                 npm_bin=NPM_BIN,
             )
         )
+
+
+@invoke.task
+def build_client(ctx, dev=False):
+    """Build the client-side viewer (/v2/) into nbviewer/static/v2"""
+    with ctx.cd(CLIENT_ROOT):
+        ctx.run("npm ci")
+        ctx.run("npm run build:dev" if dev else "npm run build")
 
 
 @invoke.task

@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+
+{# Page shell for the client-side viewer (nbviewer/v2.py, client/). #}
+
+{% block extra_head %}
+  {{ super() }}
+  <script id="nbviewer-v2-config" type="application/json">{{ v2_config | tojson }}</script>
+{% endblock extra_head %}
+
+
+{% block body %}
+  <div id="nbviewer-v2">
+    <div class="nbv2-status">Loading&hellip;</div>
+  </div>
+  <noscript>
+    <p>
+      This version of nbviewer renders notebooks in your browser, which
+      requires JavaScript.
+      <a href="{{ classic_url }}">View this page with the classic nbviewer</a>.
+    </p>
+  </noscript>
+{% endblock body %}
+
+
+{% block extra_script %}
+  {{ super() }}
+  <script src="{{ bundle_url }}"></script>
+{% endblock extra_script %}

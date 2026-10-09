@@ -2,6 +2,7 @@
 **[GitHub Enterprise](#github-enterprise)** |
 **[Base URL](#base-url)** |
 **[Local Development](#local-development)** |
+**[Client-side Viewer](#client-side-viewer-v2)** |
 **[Contributing](#contributing)** |
 **[Extensions](#extending-the-notebook-viewer)** |
 **[Configuration](#config-file-and-command-line-configuration)** |
@@ -134,6 +135,14 @@ This will download the relevant assets into `nbviewer/static/components` and cre
 
 Pass `-d` or `--debug` to `invoke less` to create a CSS sourcemap, useful for debugging.
 
+The client-side viewer served under `/v2/` (see [below](#client-side-viewer-v2)) is built with
+
+```shell
+$ invoke build-client [--dev]
+```
+
+which installs its npm dependencies and bundles it into `nbviewer/static/v2`. `--dev` makes an unminified build with source maps. While working on it, `npm run watch` in `client/` rebuilds on every change.
+
 
 #### Running Locally
 
@@ -144,6 +153,27 @@ $ python -m nbviewer --debug --no-cache --host=127.0.0.1
 
 This will automatically relaunch the server if a change is detected on a python file, and not cache any results. You can then just do the modifications you like to the source code and/or the templates then refresh the pages.
 
+
+## Client-side viewer (/v2/)
+
+Under `/v2/`, nbviewer serves an experimental viewer that fetches notebooks
+from the visitor's browser and renders them with JupyterLab's notebook
+components, so the server makes no upstream requests. For example,
+
+    /v2/url/jakevdp.github.io/downloads/notebooks/XKCD_plots.ipynb
+
+renders the same notebook as `/url/jakevdp.github.io/downloads/notebooks/XKCD_plots.ipynb`.
+`/v2/url/`, `/v2/urls/` (for hosts that allow cross-origin requests),
+`/v2/github/` (notebooks, directory listings, users and repositories) and
+`/v2/gist/` work so far. GitHub notebooks are read from raw.githubusercontent.com
+without API requests; listings use the visitor's GitHub API quota. See
+[`client/PLAN.md`](client/PLAN.md) for the design and the roadmap.
+
+The source is in `client/`. Configuration:
+
+- `NBViewer.enable_v2` (default `True`): serve `/v2/`.
+- `NBViewer.v2_content_security_policy`: the `Content-Security-Policy` header for `/v2/` pages.
+  The default allows the browser to fetch from any http(s) host.
 
 ## Contributing
 
